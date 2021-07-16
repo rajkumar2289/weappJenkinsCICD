@@ -1,0 +1,182 @@
+#!groovy
+/* groovylint-disable DuplicateListLiteral, DuplicateNumberLiteral, DuplicateStringLiteral, LineLength, NestedBlockDepth */
+pipeline {
+    agent any
+    tools {
+        maven 'maven 3.8.1'
+        jdk 'java 1.8.0'
+    }
+    environment {
+         VER = VersionNumber([versionNumberString : '${BUILD_YEAR}.${BUILD_MONTH}.${BUILD_DAY}.RRTECH${BUILDS_ALL_TIME}', projectStartDate : '2020-01-01']);
+         imageName = "jenkinsnew";
+         dockerRegistry = "Dockerusername"
+    }
+    stages {
+        stage ('Checkout repo') {
+            steps {
+                script{
+                    currentBuild.displayName = VER
+                }
+                checkout(
+                    [$class: 'GitSCM', 
+                    branches: [[name: '*/master']], 
+                    extensions: [],
+                    userRemoteConfigs: [
+                        [credentialsId: '6618d800-7b1a-4596-83d5-215cc0e8ada4',
+                         url: 'https://github.com/rajkumar2289/weappJenkinsCICD.git']
+                        ]
+                    ]
+                )
+            }
+        }
+        stage('git checkout') {
+            steps {
+                script{
+                    currentBuild.displayName = VER
+                }
+                checkout changelog: false, 
+                         poll: false, 
+                         scm: [
+                             $class: 'GitSCM', 
+                             branches: [
+                                [
+                                     name: '*/master'
+                                ]
+                            ], 
+                        extensions: [], 
+                        userRemoteConfigs: [
+                            [
+                             credentialsId: '6618d800-7b1a-4596-83d5-215cc0e8ada4',
+                             url: 'https://github.com/rajkumar2289/weappJenkinsCICD.git'
+                            ]
+                        ]
+                        ]
+            }
+        }
+        stage ('Build With Maven') {
+            steps {
+                sh 'mvn -Dmaven.test.failure.ignore=true clean package'
+                sh 'mv target/*.war target/myweb.war'
+            }
+        }
+
+        stage ('Docker Build & Push') {            
+            steps {
+                    sh """
+                        pwd
+                        ls
+                        sudo docker login -u dockerusername -p dockerpassword
+                        sudo docker build -t $dockerRegistry/$imageName:$VER  --pull .
+                        sudo docker push $dockerRegistry/$imageName:$VER
+                    """         
+            }
+        }//end build
+        stage ('Deploy webapp') {
+            steps {
+                sshagent(['tomcat-dev1']) {
+                    sh '''
+                    scp -o StrictHostKeyChecking=no target/myweb.war ubuntu@yourip:/opt/tomcat/webapps/
+                    ssh ubuntu@yourip /opt/tomcat/bin/shutdown.sh
+                    ssh ubuntu@yourip /opt/tomcat/bin/startup.sh
+                    '''
+                }
+            }
+            stage ('Deploy webapp1') {
+                steps {
+                    sh 'cp /var/lib/jenkins/workspace/pipeline/target/mywebapp.war /opt/tomcat/webapps/' 
+                }
+            }
+            stage ('artifactory upload') {
+                steps {
+                    nexusArtifactUploader artifacts: [
+                        [artifactId: 'mywebapp', 
+                           classifier: '',
+                           file: '/var/lib/jenkins/workspace/pipeline/target/mywebapp.war',
+                           type: '.war'
+                        ]
+                    ], 
+                    credentialsId: 'jenkins-user-nexus', 
+                    groupId: 'com.pvtltd.j2E',
+                    nexusUrl: 'http://18.222.122.215:8081/nexus', 
+                    nexusVersion: 'nexus3', 
+                    protocol: 'http', 
+                    repository: 'myapppackage',
+                    version: '1.0-SNAPSHOT'
+                }
+            }
+            stage('artifactory upload1') {
+                steps {
+                    script {
+                        pom = readMavenPom file: 'pom.xml'
+                        filesByGlob = findFiles(glob: "target/*.${pom.packaging}")
+                        echo "${filesByGlob[0].name} ${filesByGlob[0].path} ${filesByGlob[0].directory} ${filesByGlob[0].length} ${filesByGlob[0].lastModified}"
+                        artifactPath = filesByGlob[0].path
+                        artifactExists = fileExists artifactPath
+                        if (artifactExists) {
+                            echo "*** File: ${artifactPath}, group: ${pom.groupId}, packaging: ${pom.packaging}, version ${pom.version}"
+                            nexusArtifactUploader(
+                            nexusVersion: NEXUS_VERSION,
+                            protocol: NEXUS_PROTOCOL,
+                            nexusUrl: NEXUS_URL,
+                            groupId: pom.groupId,
+                            version: pom.version,
+                            repository: NEXUS_REPOSITORY,
+                            credentialsId: NEXUS_CREDENTIAL_ID,
+                            artifacts: [
+                                [artifactId: pom.artifactId,
+                                classifier: '',
+                                file: artifactPath,
+                                type: pom.packaging],
+                                [artifactId: pom.artifactId,
+                                classifier: '',
+                                file: 'pom.xml',
+                                type: 'pom']
+                            ]
+                            )
+                    } else {
+                            error "*** File: ${artifactPath}, could not be found"
+                        }
+                    }
+                }
+            } 
+            stage('nexus publish') {
+                steps {
+                    nexusPublisher nexusInstanceId: '', 
+                               nexusRepositoryId: '', 
+                               packages: [
+                                   [
+                                       $class: 'MavenPackage',
+                                       mavenAssetList: [
+                                           [
+                                               classifier: '',
+                                                extension: '.war', 
+                                                filePath: '/var/lib/jenkins/workspace/pipeline/target/mywebapp.war'
+                                            ]
+                                        ], 
+                                    mavenCoordinate: [
+                                        /* groovylint-disable-next-line DuplicateStringLiteral */
+                                        artifactId: 'mywebapp',
+                                        groupId: 'com.pvtltd.j2EE', 
+                                        packaging: 'war', 
+                                        /* groovylint-disable-next-line DuplicateStringLiteral */
+                                        version: '1.0-SNAPSHOT'
+                                        ]
+                                    ]
+                                ]
+                }
+            }
+
+            stage ('Docker Build & Push') {            
+                steps {
+                    sh """
+                        pwd
+                        ls
+                        sudo docker login -u dockerusername -p dockerpassword
+                        sudo docker build -t $dockerRegistry/$imageName:$VER  --pull .
+                        sudo docker push $dockerRegistry/$imageName:$VER
+                    """         
+                }
+        }//
+        }
+    }
+}
