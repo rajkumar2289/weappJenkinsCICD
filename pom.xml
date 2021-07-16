@@ -61,9 +61,9 @@
     <distributionManagement>
         <repository>
             <name>Nexus Repository</name>
-            <uniqueVersion>false</uniqueVersion>
-            <id>package-repo</id>
-            <url>http://18.222.122.215:8081/repositories/package</url>
+            <uniqueVersion>true</uniqueVersion>
+            <id>myapppackage</id>
+            <url>http://18.222.122.215:8081/repository/package</url>
             <layout>default</layout>
         </repository>
         <snapshotRepository>
@@ -71,7 +71,7 @@
             <name>Nexus snapshot</name>
             <id>myappsnapshot</id>
             <url>
-               http://18.222.122.215:8081/repositories/snapshot
+               http://18.222.122.215:8081/repository/snapshot
             </url>
             <layout>default</layout>
         </snapshotRepository>
