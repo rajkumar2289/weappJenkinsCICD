@@ -60,18 +60,20 @@
     </build>
     <distributionManagement>
         <repository>
-            <name>Nexus Repository</name>
+            <name>myapppackage</name>
             <uniqueVersion>true</uniqueVersion>
             <id>myapppackage</id>
-            <url>http://18.222.122.215:8081/repository/package</url>
+            <url>
+                http://18.222.122.215:8081/repository/package/
+            </url>
             <layout>default</layout>
         </repository>
         <snapshotRepository>
             <uniqueVersion>true</uniqueVersion>
-            <name>Nexus snapshot</name>
+            <name>myappsnapshot</name>
             <id>myappsnapshot</id>
             <url>
-               http://18.222.122.215:8081/repository/snapshot
+               http://18.222.122.215:8081/repository/snapshot/
             </url>
             <layout>default</layout>
         </snapshotRepository>
