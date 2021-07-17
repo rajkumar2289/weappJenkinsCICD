@@ -4,8 +4,18 @@ services:
     image: mywebapp:1.0
     ports:
       - 8686:8080
-
+    volumes:
+      - myapp1:/opt/docker/data1
   mvnarchetype:
     image: raj22khajana/mvnwebapp:1.1
     ports:
       - 8687:8080
+    volumes:
+      - myapp2:/opt/docker/data2
+
+volumes:
+  myapp1:
+    driver: local
+
+  myapp2:
+    driver: local
