@@ -1,0 +1,11 @@
+version: '3'
+services:
+  mywebapp:
+    image: mywebapp:1.0
+    ports:
+      - 8686:8080
+
+  mvnarchetype:
+    image: raj22khajana/mvnwebapp:1.1
+    ports:
+      - 8687:8080
