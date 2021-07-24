@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: rajkumarweappjenkinscicd 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rajkumarweappjenkinscicd
+  template:
+    metadata:
+      labels:
+        app: rajkumarweappjenkinscicd 
+    spec:
+      containers:
+        - name: rajkumarweappjenkinscicd 
+          image: badiccontainers.azurecr.io/rajkumarweappjenkinscicd
+          ports:
+          - containerPort: 8080
